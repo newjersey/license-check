@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "airtable": "^0.8.1"
+    "airtable": "^0.8.1",
+    "pg": "^8.0.0"
   },
   "devDependencies": {},
   "scripts": {

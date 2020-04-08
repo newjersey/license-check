@@ -22,6 +22,7 @@ const requestListener = function (req, res) {
         updateLicenseStatus({
             first: fields.q3_name.first,
             last: fields.q3_name.last,
+            state: fields.q7_state,
             dob: `${fields.q6_theDate.year}-${fields.q6_theDate.month}-${fields.q6_theDate.day}`,
             license: fields.q5_stateLicense
         })

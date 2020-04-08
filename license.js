@@ -1,4 +1,6 @@
+
 const Airtable = require('airtable');
+const { Client } = require('pg');
 
 const API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE = process.env.AIRTABLE_BASE;
@@ -8,7 +10,7 @@ const AIRTABLE_BASE = process.env.AIRTABLE_BASE;
  * @param Boolean update Whether or not we should update the person's record with the result (DEFAULT: TRUE)
  * @returns Promise Will resolve with a boolean telling whether the license is valid or not
  */
-function updateLicenseStatus(personData, update) {
+async function updateLicenseStatus(personData, update) {
     const willUpdate = (update === false) ? false : true;
 
     return new Promise(async (resolve, reject) => {
@@ -29,18 +31,20 @@ module.exports = updateLicenseStatus;
 
 /* ------------------------- Helpers ---------------------- */
 
-async function checkLicenseData(data) {    
+function checkLicenseData(data) {    
+    console.log('PERSON DATA:', data);
+    
     return new Promise(async (resolve, reject) => {
         try {
             if (!data.license) { resolve(false); }
 
-            const licenseData = await findLicenseByNumber(data.license);
+            const licenseData = await findLicenseByNumber(data.state, data.license);
 
             if (licenseData && 
-                licenseData.dob == data.dob && 
-                licenseData.first == data.first &&
-                licenseData.last == data.last &&
-                licenseData.status == 'Active') {
+                licenseData.date_of_birth === data.dob && 
+                licenseData.first_name === data.first &&
+                licenseData.last_name === data.last &&
+                licenseData.status === 'Active') {
                 
                 resolve(true);
             } else {
@@ -54,11 +58,31 @@ async function checkLicenseData(data) {
     });
 }
 
-function findLicenseByNumber(licenseNumber) {
-    return new Promise((resolve, reject) => {
-        // TODO: read DB looking for that license number
-        
-        resolve({ number: licenseNumber, status: 'Active', first: 'John', last: 'Doe', dob: '1976-08-14' });
+function findLicenseByNumber(state, licenseNumber) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const client = new Client({
+                connectionString: process.env.PG_CONNECTION
+            });
+            await client.connect();
+
+            const query = {
+                name: 'fetch-license',
+                text: 'select * from licenses WHERE state = $1 and license_number = $2',
+                values: [state, licenseNumber],
+            }
+
+            const res = await client.query(query);
+            
+            console.log('LICENSE FROM DB:', res.rows[0]);
+            
+            await client.end();
+
+            resolve(res.rows[0]);
+
+        } catch(err) {
+            reject(err);
+        }
     });
 }
 
