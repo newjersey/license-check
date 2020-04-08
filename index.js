@@ -18,7 +18,7 @@ app.post('/', multer.none(), function (req, res, next) {
     }
     const prettyData = getPrettyData(req.body.pretty, data);
 
-    if (!data.q5_stateLicense || !data.q5_stateLicense.length) {
+    if (!prettyData['New Jersey State License Number'] || !prettyData['New Jersey State License Number'].length) {
         // TODO: we still create the new Airtable record...
 
         console.log('Creating Airtable record for no license');
@@ -71,10 +71,16 @@ function getPrettyData(stringFormat, data) {
     stringFormat.split(/, /g).forEach((field) => {
         prettyData[field.split(/:/)[0]] = field.split(/:/)[1];
     });
-    prettyData['License Status'] = 'unknown';
+    prettyData['License Status'] = '';
     prettyData['First Name'] = data.q3_name.first;
     prettyData['Last Name'] = data.q3_name.last;
-    prettyData['Date of Birth'] = `${data.q6_dateOfBirth.year}-${data.q6_dateOfBirth.month}-${data.q6_dateOfBirth.day}`;
+    prettyData['Street Address'] = data.q8_address.addr_line1;
+    prettyData['Street Address Line 2'] = data.q8_address.addr_line2;
+    prettyData['City'] = data.q8_address.city;
+    prettyData['State'] = data.q8_address.state;
+    prettyData['Zip Code'] = data.q8_address.postal;
+    prettyData['Country'] = data.q8_address.country;
+    prettyData['Date of Birth'] = `${data.q6_dateOf.year}-${data.q6_dateOf.month}-${data.q6_dateOf.day}`;
     prettyData['Verified Record'] = false;
 
     return prettyData;

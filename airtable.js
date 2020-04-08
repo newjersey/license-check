@@ -11,6 +11,7 @@ const VALID_FIELDS = [
     'First Name',
     'Last Name',
     'Email',
+    'Date of Birth',
     'Phone Number',
     'Street Address',
     'Street Address Line 2',
@@ -18,7 +19,6 @@ const VALID_FIELDS = [
     'State',
     'Zip Code',
     'Country',
-    'Date of Birth',
     'Please select your healthcare practice area.',
     'Please enter your healthcare practice area.',
     'Please select all populations that you have experience or competency working with.',
@@ -45,6 +45,9 @@ function createNewVolunteer(data) {
 
         console.log(`Creating Airtable record for license holder: ${data['First Name']} ${data['Last Name']} (${data['New Jersey State License Number']})`);
         data['Unique Key'] = generateID(data);
+        if (!data['Submission Date']) {
+            data['Submission Date'] = (new Date).toISOString();
+        }
 
         // Sanitize our data before storing it...
         const recordData = {};
