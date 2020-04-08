@@ -1,9 +1,6 @@
 
 const { Client } = require('pg');
 
-const API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE = process.env.AIRTABLE_BASE;
-
 /**
  * @param Object personData The data about the person in the format: { first, last, dob, license }
  * @returns Promise Will resolve with an Object that has the current license info for the given person
@@ -18,14 +15,14 @@ async function checkLicenseStatus(personData) {
     });
 }
 
-module.exports = checkLicenseStatus;
+module.exports = {
+    checkLicenseStatus
+};
 
 
 /* ------------------------- Helpers ---------------------- */
 
 function getLicenseData(personData) {    
-    console.log('PERSON DATA:', personData);
-    
     return new Promise(async (resolve, reject) => {
         try {
             if (!personData.license) { resolve(false); }
@@ -67,9 +64,6 @@ function findLicenseByNumber(state, licenseNumber) {
             }
 
             const res = await client.query(query);
-            
-            console.log('LICENSE FROM DB:', res.rows.length && res.rows[0]);
-            
             await client.end();
 
             if (res.rows.length) {
