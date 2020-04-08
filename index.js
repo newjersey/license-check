@@ -1,5 +1,5 @@
 const http = require('http');
-const updateLicenseStatus = require('./license');
+const checkLicenseStatus = require('./license');
 
 const requestListener = function (req, res) {
     let data = [];
@@ -19,7 +19,7 @@ const requestListener = function (req, res) {
             }
         });
 
-        updateLicenseStatus({
+        checkLicenseStatus({
             first: fields.q3_name.first,
             last: fields.q3_name.last,
             state: fields.q7_state,
@@ -27,12 +27,15 @@ const requestListener = function (req, res) {
             license: fields.q5_stateLicense
         })
             .then((result) => {
-                console.log('License check result: ', result);
+                // TODO: create Airtable record
 
                 res.writeHead(200);
                 res.end('Success!');
             })
             .catch((err) => {
+                // TODO: how do we handle errors???
+                //       I think we still need to create the Airtable record
+
                 console.error(err);
                 res.writeHead(500);
                 res.end('Woops');

@@ -1,5 +1,4 @@
 
-const Airtable = require('airtable');
 const { Client } = require('pg');
 
 const API_KEY = process.env.AIRTABLE_API_KEY;
@@ -7,50 +6,45 @@ const AIRTABLE_BASE = process.env.AIRTABLE_BASE;
 
 /**
  * @param Object personData The data about the person in the format: { first, last, dob, license }
- * @param Boolean update Whether or not we should update the person's record with the result (DEFAULT: TRUE)
- * @returns Promise Will resolve with a boolean telling whether the license is valid or not
+ * @returns Promise Will resolve with an Object that has the current license info for the given person
  */
-async function updateLicenseStatus(personData, update) {
-    const willUpdate = (update === false) ? false : true;
-
+async function checkLicenseStatus(personData) {
     return new Promise(async (resolve, reject) => {
         try {
-            const validLicense = await checkLicenseData(personData);
-            if (willUpdate) {
-                await updateVolunteer(personData, validLicense);
-            }
-            resolve(validLicense);
+            resolve(await getLicenseData(personData));
         } catch (err) {
             reject(err);
         }
     });
 }
 
-module.exports = updateLicenseStatus;
+module.exports = checkLicenseStatus;
 
 
 /* ------------------------- Helpers ---------------------- */
 
-function checkLicenseData(data) {    
-    console.log('PERSON DATA:', data);
+function getLicenseData(personData) {    
+    console.log('PERSON DATA:', personData);
     
     return new Promise(async (resolve, reject) => {
         try {
-            if (!data.license) { resolve(false); }
+            if (!personData.license) { resolve(false); }
 
-            const licenseData = await findLicenseByNumber(data.state, data.license);
+            const licenseData = await findLicenseByNumber(personData.state, personData.license);
 
             if (licenseData && 
-                licenseData.date_of_birth === data.dob && 
-                licenseData.first_name === data.first &&
-                licenseData.last_name === data.last &&
+                licenseData.date_of_birth === personData.dob && 
+                licenseData.first_name === personData.first &&
+                licenseData.last_name === personData.last &&
                 licenseData.status === 'Active') {
                 
-                resolve(true);
-            } else {
-                // Invalid license number (or other data)
-                resolve(false);
+                licenseData.valid = true;
+                
+            } else if (licenseData) {
+                licenseData.valid = false;
             }
+
+            resolve(licenseData);
 
         } catch (err) {
             reject(err);
@@ -74,47 +68,18 @@ function findLicenseByNumber(state, licenseNumber) {
 
             const res = await client.query(query);
             
-            console.log('LICENSE FROM DB:', res.rows[0]);
+            console.log('LICENSE FROM DB:', res.rows.length && res.rows[0]);
             
             await client.end();
 
-            resolve(res.rows[0]);
+            if (res.rows.length) {
+                resolve(res.rows[0]);
+            } else {
+                resolve(null);
+            }
 
         } catch(err) {
             reject(err);
         }
     });
 }
-
-
-function updateVolunteer(data, validLicense) {    
-    return new Promise((resolve, reject) => {
-        const base = new Airtable({apiKey: API_KEY}).base(AIRTABLE_BASE);
-
-        // find airtable record...
-        base('People').select({
-            maxRecords: 2,
-            filterByFormula: `AND({First Name} = '${data.first}', {Last Name} = '${data.last}', {License Number} = '${data.license}')`
-        }).firstPage((err, records) => {
-            if (err) {
-                console.error(err);
-                return reject(err);
-            }
-
-            if (records.length < 1) {
-                console.error('No records for person', data);
-                return reject(new Error(`Could not find Airtable record for ${data.first} ${data.last} (license: ${data.license})`));
-            }
-            if (records.length > 1) {
-                console.error('Multiple records for person', data);
-                return reject(new Error(`Found multiple records in Airtable for ${data.first} ${data.last} (license: ${data.license})`));
-            }
-
-            // TODO: update the record...
-
-            console.log('Updating record:', records[0].getId());
-            resolve();
-        });
-    });
-}
-
