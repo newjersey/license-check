@@ -1,6 +1,7 @@
 
 const express = require('express');
 const { checkLicenseStatus } = require('./license');
+const { createNewVolunteer } = require('./airtable');
 
 const app = express();
 const multer  = require('multer')();
@@ -15,34 +16,45 @@ app.post('/', multer.none(), function (req, res, next) {
     } catch (err) {
         return next(err);
     }
+    const prettyData = getPrettyData(req.body.pretty, data);
 
-    // 'Name:Jane Doe, Email:jane@doe.com, The Date:04 17 2008, State License Number:4525128, State:NJ'
-    let prettyData = {};
-    req.body.pretty.split(/, /g).forEach((field) => {
-        prettyData[field.split(/:/)[0]] = field.split(/:/)[1];
-    });
-    prettyData['Date of Birth'] = `${data.q6_dateOfBirth.year}-${data.q6_dateOfBirth.month}-${data.q6_dateOfBirth.day}`;
+    if (!data.q5_stateLicense || !data.q5_stateLicense.length) {
+        // TODO: we still create the new Airtable record...
 
-    console.log('FORM DATA (PRETTY)', prettyData);
+        console.log('Creating Airtable record for no license');
+        
+
+        return res.end('Success!');
+    }
 
     checkLicenseStatus({
-        first: data.q3_name.first,
-        last: data.q3_name.last,
-        state: data.q7_state,
-        dob: `${data.q6_dateOfBirth.year}-${data.q6_dateOfBirth.month}-${data.q6_dateOfBirth.day}`,
-        license: data.q5_stateLicense
+        first: prettyData['First Name'],
+        last: prettyData['Last Name'],
+        state: prettyData['State'],
+        dob: prettyData['Date of Birth'],
+        license: prettyData['New Jersey State License Number']
     })
-        .then((result) => {
-            // TODO: create Airtable record
-            console.log('License Check:', result);
-            
+        .then(async (result) => {
+            if (result) {
+                prettyData['License Status'] = result.status;
+                if (result.status === 'Active') {
+                    prettyData['Verified Record'] = true;
+                }
+            }
 
-            res.writeHead(200);
-            res.end('Success!');
+            try {
+                await createNewVolunteer(prettyData);
+                res.end('Success!');
+            } catch(err) {
+                // TODO: not sure what to do if we can't store in airtable...
+                console.error('UNABLE TO STORE RECORD IN AIRTABLE:', err);
+                res.writeHead(500);
+                return res.end('Woops');
+            }
         })
         .catch((err) => {
             // TODO: how do we handle errors???
-            //       I think we still need to create the Airtable record
+            //       I think we still need to create the Airtable record...
 
             console.error(err);
             res.writeHead(500);
@@ -51,6 +63,22 @@ app.post('/', multer.none(), function (req, res, next) {
         });
 
 });
+
+function getPrettyData(stringFormat, data) {
+    // The "Pretty" data comes in this way, which is what we want in Airtable...
+    // 'Name:Jane Doe, Email:jane@doe.com, The Date:04 17 2008, State License Number:4525128, State:NJ'
+    let prettyData = {};
+    stringFormat.split(/, /g).forEach((field) => {
+        prettyData[field.split(/:/)[0]] = field.split(/:/)[1];
+    });
+    prettyData['License Status'] = 'unknown';
+    prettyData['First Name'] = data.q3_name.first;
+    prettyData['Last Name'] = data.q3_name.last;
+    prettyData['Date of Birth'] = `${data.q6_dateOfBirth.year}-${data.q6_dateOfBirth.month}-${data.q6_dateOfBirth.day}`;
+    prettyData['Verified Record'] = false;
+
+    return prettyData;
+}
 
 app.listen(app.get('port'), () => {
     console.log(`App listening at http://localhost:${app.get('port')}`);
