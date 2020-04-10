@@ -1,64 +1,6 @@
 
 const { Client } = require('pg');
 
-const STATES = {
-    'Alaska': 'AK', 
-    'Alabama': 'AL', 
-    'Arkansas': 'AR', 
-    'American Samoa': 'AS', 
-    'Arizona': 'AZ', 
-    'California': 'CA', 
-    'Colorado': 'CO', 
-    'Connecticut': 'CT', 
-    'District of Columbia': 'DC', 
-    'Delaware': 'DE', 
-    'Florida': 'FL', 
-    'Georgia': 'GA', 
-    'Guam': 'GU', 
-    'Hawaii': 'HI', 
-    'Iowa': 'IA', 
-    'Idaho': 'ID', 
-    'Illinois': 'IL', 
-    'Indiana': 'IN', 
-    'Kansas': 'KS', 
-    'Kentucky': 'KY', 
-    'Louisiana': 'LA', 
-    'Massachusetts': 'MA', 
-    'Maryland': 'MD', 
-    'Maine': 'ME', 
-    'Michigan': 'MI', 
-    'Minnesota': 'MN', 
-    'Missouri': 'MO', 
-    'Mississippi': 'MS', 
-    'Montana': 'MT', 
-    'North Carolina': 'NC', 
-    'North Dakota': 'ND', 
-    'Nebraska': 'NE', 
-    'New Hampshire': 'NH', 
-    'New Jersey': 'NJ', 
-    'New Mexico': 'NM', 
-    'Nevada': 'NV', 
-    'New York': 'NY', 
-    'Ohio': 'OH', 
-    'Oklahoma': 'OK', 
-    'Oregon': 'OR', 
-    'Pennsylvania': 'PA', 
-    'Puerto Rico': 'PR', 
-    'Rhode Island': 'RI', 
-    'South Carolina': 'SC', 
-    'South Dakota': 'SD', 
-    'Tennessee': 'TN', 
-    'Texas': 'TX', 
-    'Utah': 'UT', 
-    'Virginia': 'VA', 
-    'Virgin Islands': 'VI', 
-    'Vermont': 'VT', 
-    'Washington': 'WA', 
-    'Wisconsin': 'WI', 
-    'West Virginia': 'WV', 
-    'Wyoming': 'WY'
-};
-
 /**
  * @param Object personData The data about the person in the format: { first, last, dob, license }
  * @returns Promise Will resolve with an Object that has the current license info for the given person
@@ -85,15 +27,11 @@ function getLicenseData(personData) {
         try {
             if (!personData.license) { resolve(false); }
 
-            const state = convertState(personData.state);
-
-            const licenseData = await findLicenseByNumber(state, personData.license);
-
-            console.log('person data:', personData);
-            console.log('license data:', licenseData);
+            const licenseData = await findLicenseByNumber(personData.license);
             
-
             if (licenseData && 
+                licenseData.date_of_birth &&
+                licenseData.date_of_birth !== 'undefined' && 
                 licenseData.date_of_birth === personData.dob && 
                 licenseData.first_name === personData.first &&
                 licenseData.last_name === personData.last &&
@@ -113,15 +51,8 @@ function getLicenseData(personData) {
     });
 }
 
-function convertState(formData) {
-    if (formData.length > 2 && STATES[formData]) {
-        return STATES[formData];
-    } else {
-        return formData;
-    }
-}
 
-function findLicenseByNumber(state, licenseNumber) {
+function findLicenseByNumber(licenseNumber) {
     return new Promise(async (resolve, reject) => {
         try {
             const client = new Client({
@@ -131,8 +62,8 @@ function findLicenseByNumber(state, licenseNumber) {
 
             const query = {
                 name: 'fetch-license',
-                text: 'select * from licenses WHERE state = $1 and license_number = $2',
-                values: [state, licenseNumber],
+                text: 'select * from licenses WHERE license_number = $1',
+                values: [licenseNumber],
             }
 
             const res = await client.query(query);
