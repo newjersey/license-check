@@ -27,7 +27,7 @@ const PREPARED_STATEMENT = `PREPARE upsert (character varying, character varying
     const fileInput = process.argv[2];
     const dbConnect = process.argv[3];
     
-    log('Starting license-data load...', false);
+    log(`${(new Date()).toISOString()} Starting license-data load...`, false);
 
     await checkInputs(fileInput, dbConnect);
     const fileData = await readFile(fileInput);
